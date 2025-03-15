@@ -399,30 +399,55 @@ func (s *Socket) EmitWithCompressor(routingKey string, data interface{}, compres
 
 // Close closes the socket and its subscriptions
 func (s *Socket) Close() error {
-	s.mu.Lock()
-
-	// Log that we're closing the socket
-	logger.Log("RabbitAdapter", "Socket", 
-		fmt.Sprintf("Closing socket with %d consumers", len(s.consumers)), logger.INFO)
-
-	// Cancel all consumers
-	for routingKey, consumerTag := range s.consumers {
-		logger.Log("RabbitAdapter", "Socket", 
-			fmt.Sprintf("Canceling consumer %s for routing key %s", consumerTag, routingKey), logger.INFO)
-		
-		err := s.context.channel.Cancel(consumerTag, false)
-		if err != nil {
-			logger.Log("RabbitAdapter", "Socket", 
-				fmt.Sprintf("Error canceling consumer %s: %s", routingKey, err.Error()), logger.ERROR)
-		}
-	}
-
-	// Clear consumer map
-	s.consumers = make(map[string]string)
-	s.mu.Unlock()
+	// Create a channel to track completion
+	done := make(chan struct{})
 	
-	// Sleep briefly to allow consumers to process the cancellation
-	time.Sleep(100 * time.Millisecond)
+	// Run the closing operation in a goroutine
+	go func() {
+		defer close(done)
+		
+		s.mu.Lock()
+		
+		// Store values for unlocking 
+		consumerCount := len(s.consumers)
+		consumerMap := make(map[string]string, consumerCount)
+		for k, v := range s.consumers {
+			consumerMap[k] = v
+		}
+		
+		// Clear consumer map early
+		s.consumers = make(map[string]string)
+		
+		// Log that we're closing the socket
+		logger.Log("RabbitAdapter", "Socket", 
+			fmt.Sprintf("Closing socket with %d consumers", consumerCount), logger.INFO)
+		
+		s.mu.Unlock()
+		
+		// Cancel all consumers
+		for routingKey, consumerTag := range consumerMap {
+			logger.Log("RabbitAdapter", "Socket", 
+				fmt.Sprintf("Canceling consumer %s for routing key %s", consumerTag, routingKey), logger.INFO)
+			
+			// Use separate channel lock to avoid deadlocks
+			if s.context != nil && s.context.channel != nil {
+				err := s.context.channel.Cancel(consumerTag, false)
+				if err != nil {
+					logger.Log("RabbitAdapter", "Socket", 
+						fmt.Sprintf("Error canceling consumer %s: %s", routingKey, err.Error()), logger.ERROR)
+				}
+			}
+		}
+	}()
+	
+	// Wait for the shutdown to complete with a shorter timeout
+	select {
+	case <-done:
+		// Socket closing completed normally
+	case <-time.After(500 * time.Millisecond):
+		// Timeout - log it but continue
+		logger.Log("RabbitAdapter", "Socket", "Socket closing timed out after 500ms", logger.WARN)
+	}
 	
 	return nil
 }

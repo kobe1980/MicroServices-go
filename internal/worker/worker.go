@@ -770,50 +770,82 @@ func (w *Worker) Kill() {
 		logger.Log("Worker", w.ID, "Stopping client", logger.INFO)
 	}
 	
-	// Close all sockets with delay to allow processing
-	closeSocket := func(name string, socket *rabbit.Socket) {
-		if socket != nil {
-			if w.Config.WorkerLog {
-				logger.Log("Worker", w.ID, fmt.Sprintf("Closing socket: %s", name), logger.INFO)
+	// Create a channel to track completion
+	done := make(chan struct{})
+	
+	// Run the shutdown in a goroutine
+	go func() {
+		defer close(done)
+		
+		// Close all sockets with delay to allow processing
+		closeSocket := func(name string, socket *rabbit.Socket) {
+			if socket != nil {
+				if w.Config.WorkerLog {
+					logger.Log("Worker", w.ID, fmt.Sprintf("Closing socket: %s", name), logger.INFO)
+				}
+				socket.Close()
+				// Add a small delay between socket closures
+				time.Sleep(50 * time.Millisecond)
 			}
-			socket.Close()
 		}
-	}
-	
-	// Close sockets in order - subscriptions first, then publishers
-	closeSocket("NotifErrorSub", w.NotifErrorSub)
-	closeSocket("NotifNewWorker", w.NotifNewWorker)
-	closeSocket("NotifWorkerList", w.NotifWorkerList)
-	closeSocket("NotifGetAllSub", w.NotifGetAllSub)
-	closeSocket("NotifNextJobSub", w.NotifNextJobSub)
-	closeSocket("NextJobAckSub", w.NextJobAckSub)
-	closeSocket("NextJobPub", w.NextJobPub)
-	closeSocket("NextJobAckPub", w.NextJobAckPub)
-	closeSocket("Pub", w.Pub)
-	
-	// Brief pause to allow socket closures to complete
-	time.Sleep(200 * time.Millisecond)
-	
-	// Close connection
-	if w.RabbitContext != nil {
+		
+		// Close sockets in order - subscriptions first, then publishers
+		closeSocket("NotifErrorSub", w.NotifErrorSub)
+		closeSocket("NotifNewWorker", w.NotifNewWorker)
+		closeSocket("NotifWorkerList", w.NotifWorkerList)
+		closeSocket("NotifGetAllSub", w.NotifGetAllSub)
+		closeSocket("NotifNextJobSub", w.NotifNextJobSub)
+		closeSocket("NextJobAckSub", w.NextJobAckSub)
+		closeSocket("NextJobPub", w.NextJobPub)
+		closeSocket("NextJobAckPub", w.NextJobAckPub)
+		closeSocket("Pub", w.Pub)
+		
+		// Brief pause to allow socket closures to complete
+		time.Sleep(200 * time.Millisecond)
+		
+		// Close connection
+		if w.RabbitContext != nil {
+			if w.Config.WorkerLog {
+				logger.Log("Worker", w.ID, "Closing RabbitMQ connection", logger.INFO)
+			}
+			w.RabbitContext.Close()
+		}
+		
+		// Clear references to avoid memory leaks
+		w.Pub = nil
+		w.NotifErrorSub = nil
+		w.NotifNewWorker = nil
+		w.NotifWorkerList = nil
+		w.NotifGetAllSub = nil
+		w.NotifNextJobSub = nil
+		w.NextJobPub = nil
+		w.NextJobAckSub = nil
+		w.NextJobAckPub = nil
+		w.RabbitContext = nil
+		
+		// Close metrics
+		if w.Metrics != nil {
+			if w.Config.WorkerLog {
+				logger.Log("Worker", w.ID, "Closing metrics", logger.INFO)
+			}
+			w.Metrics.Close()
+			w.Metrics = nil
+		}
+		
 		if w.Config.WorkerLog {
-			logger.Log("Worker", w.ID, "Closing RabbitMQ connection", logger.INFO)
+			logger.Log("Worker", w.ID, "Worker stopped successfully", logger.INFO)
 		}
-		w.RabbitContext.Close()
+	}()
+	
+	// Wait for the shutdown to complete with a timeout
+	select {
+	case <-done:
+		// Shutdown completed normally
+	case <-time.After(3 * time.Second):
+		// Timeout - log it but continue
+		logger.Log("Worker", w.ID, "Worker shutdown timed out after 3 seconds", logger.WARN)
 	}
 	
-	// Close metrics
-	if w.Metrics != nil {
-		if w.Config.WorkerLog {
-			logger.Log("Worker", w.ID, "Closing metrics", logger.INFO)
-		}
-		w.Metrics.Close()
-	}
-	
-	if w.Config.WorkerLog {
-		logger.Log("Worker", w.ID, "Worker stopped successfully", logger.INFO)
-	}
-	
-	// Small delay to ensure logs are properly flushed
+	// Ensure logs are flushed
 	time.Sleep(100 * time.Millisecond)
 }

@@ -24,6 +24,8 @@ type LogLevel string
 const (
 	// INFO level for general informational messages
 	INFO LogLevel = "INFO"
+	// WARN level for warning messages
+	WARN LogLevel = "WARN"
 	// ERROR level for error messages
 	ERROR LogLevel = "ERROR"
 )

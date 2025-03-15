@@ -141,6 +141,44 @@ func (sm *SystemManager) setupManager() {
 			fmt.Sprintf("Error connecting new worker sub: %s", err.Error()), logger.ERROR)
 		return
 	}
+	
+	// Set up worker deletion subscription
+	sm.NotificationDelWorker, err = sm.RabbitContext.NewSocket(rabbit.SUB)
+	if err != nil {
+		logger.Log("SystemManager", sm.ID, 
+			fmt.Sprintf("Error creating worker deletion socket: %s", err.Error()), logger.ERROR)
+		return
+	}
+	
+	// Connect worker deletion subscription
+	err = sm.NotificationDelWorker.Connect("notifications", "worker.del", func() {
+		if sm.Config.SystemManagerLog {
+			logger.Log("SystemManager", sm.ID, "Connected to notifications, Topic worker.del")
+		}
+		
+		// Handle worker deletion messages
+		err := sm.NotificationDelWorker.On("data", func(data []byte) {
+			var workerData worker.WorkerConfig
+			if err := sm.Compressor.Deserialize(data, &workerData); err != nil {
+				logger.Log("SystemManager", sm.ID, 
+					fmt.Sprintf("Error deserializing worker deletion data: %s", err.Error()), logger.ERROR)
+				return
+			}
+			
+			// Process worker deletion
+			sm.DelWorker(workerData)
+		})
+		if err != nil {
+			logger.Log("SystemManager", sm.ID, 
+				fmt.Sprintf("Error setting up worker deletion handler: %s", err.Error()), logger.ERROR)
+			return
+		}
+	})
+	if err != nil {
+		logger.Log("SystemManager", sm.ID, 
+			fmt.Sprintf("Error connecting worker deletion subscription: %s", err.Error()), logger.ERROR)
+		return
+	}
 
 	// Set up next job subscription
 	sm.NotificationNextJob, err = sm.RabbitContext.NewSocket(rabbit.SUB)
@@ -243,10 +281,11 @@ func (sm *SystemManager) handleJob(jobData worker.JobData) {
 
 		// Create error response
 		errorData := worker.Error{
-			Target: jobData.Sender,
-			Error:  "No worker available for this job",
-			ID:     jobData.ID,
-			Data:   jobData.Data,
+			Target:  jobData.Sender,
+			Error:   worker.ErrorCommunication,
+			Message: "No worker available for this job",
+			ID:      jobData.ID,
+			Data:    jobData.Data,
 		}
 
 		// Serialize error
@@ -320,7 +359,7 @@ func (sm *SystemManager) DelWorker(workerData worker.WorkerConfig) {
 
 	if sm.Config.SystemManagerLog {
 		logger.Log("SystemManager", sm.ID, 
-			fmt.Sprintf("Worker deleted: %s", workerData.ID))
+			fmt.Sprintf("Worker deleted: %s (type: %s)", workerData.ID, workerData.Type))
 	}
 
 	// Record metrics

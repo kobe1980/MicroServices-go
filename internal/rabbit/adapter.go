@@ -294,6 +294,23 @@ func (s *Socket) Publish(routingKey string, data []byte) error {
 	)
 }
 
+// Emit is a higher-level method that serializes and publishes data
+// This provides compatibility with the JavaScript version's socket.emit pattern
+func (s *Socket) Emit(routingKey string, data interface{}, serializer func(interface{}) ([]byte, error)) error {
+	if serializer == nil {
+		return fmt.Errorf("serializer function is required")
+	}
+
+	// Serialize the data
+	serialized, err := serializer(data)
+	if err != nil {
+		return fmt.Errorf("failed to serialize data: %w", err)
+	}
+
+	// Publish the serialized data
+	return s.Publish(routingKey, serialized)
+}
+
 // Close closes the socket and its subscriptions
 func (s *Socket) Close() error {
 	s.mu.Lock()

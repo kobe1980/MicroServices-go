@@ -386,8 +386,8 @@ func (w *DBWorker) sendResponse(jobData worker.JobData, response DBResponse) {
 	}
 }
 
-// TreatError handles errors specific to the DB worker
-func (w *DBWorker) TreatError(errorData worker.Error) {
+// HandleError handles errors specific to the DB worker
+func (w *DBWorker) HandleError(errorData worker.Error) {
 	// Override base implementation
 	logger.Log("DBWorker", w.ID, fmt.Sprintf("Database error received: %s", errorData.Error), logger.ERROR)
 	

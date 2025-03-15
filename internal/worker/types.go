@@ -14,8 +14,8 @@ type WorkerConfig struct {
 
 // JobData represents a job to be processed
 type JobData struct {
-	WorkersList   []string     `json:"workers_list"`
-	WorkersListID int          `json:"workers_list_id"`
+	WorkersList   []string     `json:"workersList"`
+	WorkersListID int          `json:"workersListId"`
 	Data          interface{}  `json:"data"`
 	Sender        WorkerConfig `json:"sender"`
 	ID            string       `json:"id"`
@@ -32,17 +32,28 @@ type JobToSend struct {
 
 // Error represents an error message
 type Error struct {
-	Target WorkerConfig `json:"target"`
-	Error  string       `json:"error"`
-	ID     string       `json:"id"`
-	Data   interface{}  `json:"data"`
+	Target  WorkerConfig `json:"target"`
+	Error   string       `json:"error"`    // Error code, typically uppercase with underscores
+	Message string       `json:"message"`  // Human-readable error message
+	ID      string       `json:"id"`
+	Data    interface{}  `json:"data"`
 }
 
+// Error codes for standardized error handling
+const (
+	ErrorJobMaxRetriesExceeded = "JOB_MAX_RETRIES_EXCEEDED"
+	ErrorJobTimeout            = "JOB_TIMEOUT"
+	ErrorJobProcessing         = "JOB_PROCESSING_ERROR"
+	ErrorInvalidFormat         = "INVALID_FORMAT"
+	ErrorCommunication         = "COMMUNICATION_ERROR"
+)
+
 // JobError creates a standard job error
-func JobError(message string, data interface{}) Error {
+func JobError(code string, message string, data interface{}) Error {
 	return Error{
-		Error: message,
-		Data:  data,
+		Error:   code,
+		Message: message,
+		Data:    data,
 	}
 }
 

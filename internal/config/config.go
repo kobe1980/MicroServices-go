@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 // Config holds all configuration for the application
@@ -66,4 +67,70 @@ func SaveConfig(config *Config, configPath string) error {
 	}
 	
 	return os.WriteFile(configPath, file, 0644)
+}
+
+// GetConfigFromEnv loads configuration from environment variables
+// This provides compatibility with the JavaScript version's environment variable support
+func GetConfigFromEnv() *Config {
+	config := DefaultConfig()
+	
+	// Read from environment variables, fallback to defaults
+	if val := os.Getenv("BROKER_URL"); val != "" {
+		config.BrokerURL = val
+	}
+	
+	if val := os.Getenv("DATA_TRANSFER_PROTOCOL"); val != "" {
+		config.DataTransferProtocol = val
+	}
+	
+	if val := os.Getenv("METRICS_PORT"); val != "" {
+		if port, err := strconv.Atoi(val); err == nil {
+			config.MetricsPort = port
+		}
+	}
+	
+	if val := os.Getenv("JOB_RETRY"); val != "" {
+		if retries, err := strconv.Atoi(val); err == nil {
+			config.JobRetry = retries
+		}
+	}
+	
+	if val := os.Getenv("JOB_TIMEOUT"); val != "" {
+		if timeout, err := strconv.Atoi(val); err == nil {
+			config.JobTimeout = timeout
+		}
+	}
+	
+	if val := os.Getenv("KEEPALIVE"); val != "" {
+		if keepalive, err := strconv.Atoi(val); err == nil {
+			config.Keepalive = keepalive
+		}
+	}
+	
+	// Boolean flags
+	if val := os.Getenv("WORKER_LOG"); val != "" {
+		config.WorkerLog = parseBool(val, config.WorkerLog)
+	}
+	
+	if val := os.Getenv("SYSTEM_MANAGER_LOG"); val != "" {
+		config.SystemManagerLog = parseBool(val, config.SystemManagerLog)
+	}
+	
+	return config
+}
+
+// Helper function to parse boolean environment variables
+func parseBool(value string, defaultValue bool) bool {
+	if value == "" {
+		return defaultValue
+	}
+	
+	switch value {
+	case "1", "true", "TRUE", "True", "yes", "YES", "Yes", "y", "Y":
+		return true
+	case "0", "false", "FALSE", "False", "no", "NO", "No", "n", "N":
+		return false
+	default:
+		return defaultValue
+	}
 }

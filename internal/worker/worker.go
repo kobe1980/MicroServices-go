@@ -314,14 +314,15 @@ func (w *Worker) ReceiveError(data []byte) {
 
 	// Only process errors targeted at this worker
 	if errorData.Target.ID == w.ID {
-		w.TreatError(errorData)
+		w.HandleError(errorData)
 	}
 }
 
-// TreatError processes error messages - to be overridden by implementations
-func (w *Worker) TreatError(data Error) {
+// HandleError processes error messages - to be overridden by implementations
+// This method name is aligned with JavaScript convention for error handling
+func (w *Worker) HandleError(data Error) {
 	// Base implementation just logs the error
-	logger.Log("Worker", w.ID, fmt.Sprintf("Received error: %s", data.Error), logger.ERROR)
+	logger.Log("Worker", w.ID, fmt.Sprintf("Received error: %s - %s", data.Error, data.Message), logger.ERROR)
 }
 
 // ReceiveNextJob handles next job messages
@@ -528,10 +529,11 @@ func (w *Worker) Resend(nextWorkers []string, jobToSend *JobToSend) {
 		// Record error metric
 		w.Metrics.RecordError("job_max_retries_exceeded")
 		
-		// Treat as error
-		return w.TreatError(Error{
-			Error: "Job send too many times",
-			Data:  jobToSend.Job.Data,
+		// Treat as error using standardized error format
+		return w.HandleError(Error{
+			Error:   ErrorJobMaxRetriesExceeded,
+			Message: fmt.Sprintf("Job sent %d times, maximum retries exceeded", w.JobRetry),
+			Data:    jobToSend.Job.Data,
 		})
 	}
 

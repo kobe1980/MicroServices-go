@@ -99,6 +99,39 @@ func (c *Context) connect() error {
 		}
 	}()
 
+	// Extract port from URL for logging
+	url := c.URL
+	port := "5672" // Default AMQP port
+	
+	// Try to extract port from URL if present
+	for i := 0; i < len(url); i++ {
+		if i+2 < len(url) && url[i:i+3] == "://" {
+			colonIndex := -1
+			for j := i + 3; j < len(url); j++ {
+				if url[j] == ':' {
+					colonIndex = j
+				}
+				if url[j] == '/' {
+					break
+				}
+			}
+			if colonIndex != -1 {
+				slashIndex := len(url)
+				for j := colonIndex; j < len(url); j++ {
+					if url[j] == '/' {
+						slashIndex = j
+						break
+					}
+				}
+				port = url[colonIndex+1:slashIndex]
+			}
+			break
+		}
+	}
+
+	logger.Log("RabbitAdapter", "Connection", 
+		fmt.Sprintf("Connected to RabbitMQ server on port %s", port), logger.INFO)
+
 	c.mu.Lock()
 	c.ready = true
 	// Call all readyFunc callbacks
@@ -131,12 +164,37 @@ func (c *Context) IsReady() bool {
 
 // Close closes the connection
 func (c *Context) Close() error {
+	logger.Log("RabbitAdapter", "Connection", "Closing RabbitMQ connection", logger.INFO)
+
+	// Mark as not ready to prevent new connections
+	c.mu.Lock()
+	c.ready = false
+	c.mu.Unlock()
+	
+	// Close channel first
 	if c.channel != nil {
-		c.channel.Close()
+		logger.Log("RabbitAdapter", "Connection", "Closing channel", logger.INFO)
+		err := c.channel.Close()
+		if err != nil {
+			logger.Log("RabbitAdapter", "Connection", 
+				fmt.Sprintf("Error closing channel: %s", err.Error()), logger.ERROR)
+		}
+		c.channel = nil
 	}
+	
+	// Then close connection
 	if c.connection != nil {
-		return c.connection.Close()
+		logger.Log("RabbitAdapter", "Connection", "Closing connection", logger.INFO)
+		err := c.connection.Close()
+		if err != nil {
+			logger.Log("RabbitAdapter", "Connection", 
+				fmt.Sprintf("Error closing connection: %s", err.Error()), logger.ERROR)
+			return err
+		}
+		c.connection = nil
 	}
+	
+	logger.Log("RabbitAdapter", "Connection", "RabbitMQ connection closed", logger.INFO)
 	return nil
 }
 
@@ -251,9 +309,12 @@ func (s *Socket) On(event string, handler func([]byte)) error {
 
 // consume starts a goroutine to consume messages
 func (s *Socket) consume(routingKey string, handler DataHandler) {
+	// Generate a unique consumer tag
+	consumerTag := fmt.Sprintf("%s-%d", routingKey, time.Now().UnixNano())
+	
 	msgs, err := s.context.channel.Consume(
 		s.queue,      // queue
-		"",           // consumer
+		consumerTag,  // consumer tag - unique identifier
 		true,         // auto-ack
 		false,        // exclusive
 		false,        // no-local
@@ -265,12 +326,21 @@ func (s *Socket) consume(routingKey string, handler DataHandler) {
 			fmt.Sprintf("Failed to consume from queue: %s", err.Error()), logger.ERROR)
 		return
 	}
-
+	
+	// Store the consumer tag for later cancellation
+	s.mu.Lock()
+	s.consumers[routingKey] = consumerTag
+	s.mu.Unlock()
+	
+	// Process messages until channel is closed
 	for msg := range msgs {
 		if handler != nil {
 			handler(msg.Body)
 		}
 	}
+	
+	logger.Log("RabbitAdapter", "Socket", 
+		fmt.Sprintf("Consumer %s for routing key %s has stopped", consumerTag, routingKey), logger.INFO)
 }
 
 // Publish publishes a message to the exchange with the specified routing key
@@ -330,9 +400,16 @@ func (s *Socket) EmitWithCompressor(routingKey string, data interface{}, compres
 // Close closes the socket and its subscriptions
 func (s *Socket) Close() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
+	// Log that we're closing the socket
+	logger.Log("RabbitAdapter", "Socket", 
+		fmt.Sprintf("Closing socket with %d consumers", len(s.consumers)), logger.INFO)
+
+	// Cancel all consumers
 	for routingKey, consumerTag := range s.consumers {
+		logger.Log("RabbitAdapter", "Socket", 
+			fmt.Sprintf("Canceling consumer %s for routing key %s", consumerTag, routingKey), logger.INFO)
+		
 		err := s.context.channel.Cancel(consumerTag, false)
 		if err != nil {
 			logger.Log("RabbitAdapter", "Socket", 
@@ -340,7 +417,13 @@ func (s *Socket) Close() error {
 		}
 	}
 
+	// Clear consumer map
 	s.consumers = make(map[string]string)
+	s.mu.Unlock()
+	
+	// Sleep briefly to allow consumers to process the cancellation
+	time.Sleep(100 * time.Millisecond)
+	
 	return nil
 }
 

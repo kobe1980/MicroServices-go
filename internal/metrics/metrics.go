@@ -2,6 +2,7 @@
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -174,7 +175,21 @@ func (m *Metrics) SetConnectedWorkers(count int) {
 // Close shuts down the metrics HTTP server
 func (m *Metrics) Close() error {
 	if m.server != nil {
-		return m.server.Close()
+		logger.Log("MicroService", "Metrics", "Shutting down metrics HTTP server")
+		
+		// Create a context with a timeout for graceful shutdown
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		
+		// Attempt graceful shutdown
+		err := m.server.Shutdown(ctx)
+		if err != nil {
+			logger.Log("MicroService", "Metrics", 
+				fmt.Sprintf("Error shutting down metrics server: %s", err.Error()), logger.ERROR)
+			return err
+		}
+		
+		logger.Log("MicroService", "Metrics", "Metrics server shutdown complete")
 	}
 	return nil
 }

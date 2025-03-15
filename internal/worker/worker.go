@@ -767,45 +767,53 @@ func (w *Worker) SetNextJobForMe(value bool) {
 // Kill stops the worker
 func (w *Worker) Kill() {
 	if w.Config.WorkerLog {
-		logger.Log("Worker", w.ID, "Stopping client")
+		logger.Log("Worker", w.ID, "Stopping client", logger.INFO)
 	}
 	
-	// Close all sockets
-	if w.Pub != nil {
-		w.Pub.Close()
+	// Close all sockets with delay to allow processing
+	closeSocket := func(name string, socket *rabbit.Socket) {
+		if socket != nil {
+			if w.Config.WorkerLog {
+				logger.Log("Worker", w.ID, fmt.Sprintf("Closing socket: %s", name), logger.INFO)
+			}
+			socket.Close()
+		}
 	}
-	if w.NotifErrorSub != nil {
-		w.NotifErrorSub.Close()
-	}
-	if w.NotifNewWorker != nil {
-		w.NotifNewWorker.Close()
-	}
-	if w.NotifWorkerList != nil {
-		w.NotifWorkerList.Close()
-	}
-	if w.NotifGetAllSub != nil {
-		w.NotifGetAllSub.Close()
-	}
-	if w.NotifNextJobSub != nil {
-		w.NotifNextJobSub.Close()
-	}
-	if w.NextJobPub != nil {
-		w.NextJobPub.Close()
-	}
-	if w.NextJobAckSub != nil {
-		w.NextJobAckSub.Close()
-	}
-	if w.NextJobAckPub != nil {
-		w.NextJobAckPub.Close()
-	}
+	
+	// Close sockets in order - subscriptions first, then publishers
+	closeSocket("NotifErrorSub", w.NotifErrorSub)
+	closeSocket("NotifNewWorker", w.NotifNewWorker)
+	closeSocket("NotifWorkerList", w.NotifWorkerList)
+	closeSocket("NotifGetAllSub", w.NotifGetAllSub)
+	closeSocket("NotifNextJobSub", w.NotifNextJobSub)
+	closeSocket("NextJobAckSub", w.NextJobAckSub)
+	closeSocket("NextJobPub", w.NextJobPub)
+	closeSocket("NextJobAckPub", w.NextJobAckPub)
+	closeSocket("Pub", w.Pub)
+	
+	// Brief pause to allow socket closures to complete
+	time.Sleep(200 * time.Millisecond)
 	
 	// Close connection
 	if w.RabbitContext != nil {
+		if w.Config.WorkerLog {
+			logger.Log("Worker", w.ID, "Closing RabbitMQ connection", logger.INFO)
+		}
 		w.RabbitContext.Close()
 	}
 	
 	// Close metrics
 	if w.Metrics != nil {
+		if w.Config.WorkerLog {
+			logger.Log("Worker", w.ID, "Closing metrics", logger.INFO)
+		}
 		w.Metrics.Close()
 	}
+	
+	if w.Config.WorkerLog {
+		logger.Log("Worker", w.ID, "Worker stopped successfully", logger.INFO)
+	}
+	
+	// Small delay to ensure logs are properly flushed
+	time.Sleep(100 * time.Millisecond)
 }

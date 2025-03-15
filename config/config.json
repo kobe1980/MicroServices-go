@@ -1,0 +1,10 @@
+{
+  "broker_url": "amqp://localhost",
+  "keepalive": 10000,
+  "SystemManager_log": true,
+  "Worker_log": true,
+  "data_transfer_protocol": "msgpack",
+  "metrics_port": 9091,
+  "job_retry": 5,
+  "job_timeout": 2000
+}

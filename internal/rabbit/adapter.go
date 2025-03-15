@@ -311,6 +311,21 @@ func (s *Socket) Emit(routingKey string, data interface{}, serializer func(inter
 	return s.Publish(routingKey, serialized)
 }
 
+// EmitWithCompressor is a convenience helper that uses a compressor for serialization
+// The compressor interface is a subset of the internal/compressor.Compressor
+type CompressorInterface interface {
+	Serialize(data interface{}) ([]byte, error)
+}
+
+// EmitWithCompressor emits a message using the provided compressor for serialization
+func (s *Socket) EmitWithCompressor(routingKey string, data interface{}, compressor CompressorInterface) error {
+	if compressor == nil {
+		return fmt.Errorf("compressor is required")
+	}
+	
+	return s.Emit(routingKey, data, compressor.Serialize)
+}
+
 // Close closes the socket and its subscriptions
 func (s *Socket) Close() error {
 	s.mu.Lock()

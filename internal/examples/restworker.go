@@ -272,7 +272,11 @@ func (w *RESTWorker) sendResponse(jobData worker.JobData, response RESTResponse)
 // HandleError handles errors specific to the REST worker
 func (w *RESTWorker) HandleError(errorData worker.Error) {
 	// Override base implementation
-	logger.Log("RESTWorker", w.ID, fmt.Sprintf("REST error received: %s", errorData.Error), logger.ERROR)
+	if errorData.Message != "" {
+		logger.Log("RESTWorker", w.ID, fmt.Sprintf("REST error received: %s - %s", errorData.Error, errorData.Message), logger.ERROR)
+	} else {
+		logger.Log("RESTWorker", w.ID, fmt.Sprintf("REST error received: %s", errorData.Error), logger.ERROR)
+	}
 	
 	// Record error metric with specific type
 	w.Metrics.RecordError("rest_error_received")

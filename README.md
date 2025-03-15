@@ -122,7 +122,7 @@ To create a custom worker:
    }
    ```
 
-3. Override at least the `DoJob` and `TreatError` methods:
+3. Override at least the `DoJob` and `HandleError` methods:
    ```go
    // Override DoJob to handle your worker's specific job processing
    func (w *MyWorker) DoJob(jobData worker.JobData) {
@@ -137,8 +137,8 @@ To create a custom worker:
        }
    }
    
-   // Override TreatError to handle your worker's specific error handling
-   func (w *MyWorker) TreatError(errorData worker.Error) {
+   // Override HandleError to handle your worker's specific error handling
+   func (w *MyWorker) HandleError(errorData worker.Error) {
        // Your implementation here
    }
    ```

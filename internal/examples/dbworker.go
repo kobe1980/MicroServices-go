@@ -389,7 +389,11 @@ func (w *DBWorker) sendResponse(jobData worker.JobData, response DBResponse) {
 // HandleError handles errors specific to the DB worker
 func (w *DBWorker) HandleError(errorData worker.Error) {
 	// Override base implementation
-	logger.Log("DBWorker", w.ID, fmt.Sprintf("Database error received: %s", errorData.Error), logger.ERROR)
+	if errorData.Message != "" {
+		logger.Log("DBWorker", w.ID, fmt.Sprintf("Database error received: %s - %s", errorData.Error, errorData.Message), logger.ERROR)
+	} else {
+		logger.Log("DBWorker", w.ID, fmt.Sprintf("Database error received: %s", errorData.Error), logger.ERROR)
+	}
 	
 	// Record error metric with specific type
 	w.Metrics.RecordError("db_error_received")

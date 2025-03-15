@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kobe1980/microservices-go/internal/compressor"
 	"github.com/kobe1980/microservices-go/internal/config"
 	"github.com/kobe1980/microservices-go/internal/logger"
@@ -322,7 +321,11 @@ func (w *Worker) ReceiveError(data []byte) {
 // This method name is aligned with JavaScript convention for error handling
 func (w *Worker) HandleError(data Error) {
 	// Base implementation just logs the error
-	logger.Log("Worker", w.ID, fmt.Sprintf("Received error: %s - %s", data.Error, data.Message), logger.ERROR)
+	if data.Message != "" {
+		logger.Log("Worker", w.ID, fmt.Sprintf("Received error: %s - %s", data.Error, data.Message), logger.ERROR)
+	} else {
+		logger.Log("Worker", w.ID, fmt.Sprintf("Received error: %s", data.Error), logger.ERROR)
+	}
 }
 
 // ReceiveNextJob handles next job messages

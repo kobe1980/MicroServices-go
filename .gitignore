@@ -29,3 +29,6 @@ Thumbs.db
 
 # Built binaries
 bin/
+examples
+worker
+systemmanager

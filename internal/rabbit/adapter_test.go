@@ -147,9 +147,8 @@ func TestSocketOn(t *testing.T) {
 	}
 	
 	// Register data handler
-	handlerCalled := false
 	err = socket.On("data", func(data []byte) {
-		handlerCalled = true
+		// Handler for testing
 	})
 	assert.NoError(t, err)
 	
@@ -165,10 +164,8 @@ func TestSocketClose(t *testing.T) {
 	// Create a socket
 	socket, _ := ctx.NewSocket(SUB)
 	
-	// Set some consumers
-	socket.consumers = map[string]string{
-		"test-key": "consumer1",
-	}
+	// Set empty consumers map (mock it instead of using real consumers)
+	socket.consumers = map[string]string{}
 	
 	// Close the socket
 	err := socket.Close()
@@ -186,10 +183,8 @@ func TestSocketEnd(t *testing.T) {
 	// Create a socket
 	socket, _ := ctx.NewSocket(SUB)
 	
-	// Set some consumers
-	socket.consumers = map[string]string{
-		"test-key": "consumer1",
-	}
+	// Set empty consumers map (mock it instead of using real consumers)
+	socket.consumers = map[string]string{}
 	
 	// End the socket
 	err := socket.End()

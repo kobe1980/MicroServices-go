@@ -1,3 +1,5 @@
+// Worker command-line application
+// Starts a worker service that processes jobs from the message bus
 package main
 
 import (

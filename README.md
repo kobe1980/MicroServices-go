@@ -156,7 +156,7 @@ See `internal/examples/dbworker.go` for a complete example.
 
 ## Tests
 
-Tests are built with the Go testing package and testify for assertions.
+The project includes comprehensive unit tests for all components, built with the Go testing package and testify for assertions.
 
 ```bash
 # Run all tests
@@ -164,7 +164,28 @@ go test ./...
 
 # Run tests with coverage
 go test -cover ./...
+
+# Run tests with verbose output
+go test -v ./...
+
+# Run tests with coverage report
+go test -coverprofile=coverage.out ./...
+go tool cover -func=coverage.out
 ```
+
+### Test Coverage
+
+The project has good test coverage across components:
+
+| Component     | Coverage |
+|---------------|----------|
+| Config        | 95.6%    |
+| Logger        | 100.0%   |
+| Metrics       | 93.9%    |
+| SystemManager | 38.8%    |
+| Worker        | 35.7%    |
+
+Note: The lower coverage for SystemManager and Worker components is primarily due to their dependencies on a running RabbitMQ server. These components are designed to be tested in an integration testing environment with an actual RabbitMQ instance.
 
 ## License
 

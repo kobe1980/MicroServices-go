@@ -1,3 +1,5 @@
+// Example runner for the microservices framework
+// Demonstrates how to use the different worker types
 package main
 
 import (

@@ -1,3 +1,4 @@
+// Package metrics provides Prometheus-based metrics collection for the microservices
 package metrics
 
 import (
@@ -7,6 +8,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 )
+
+// The tests in this file verify the behavior of the metrics package, including:
+// - Initializing metrics collectors
+// - Recording various types of metrics (counters, gauges, histograms)
+// - Starting and stopping timers
+// - HTTP server setup for metrics exposure
+// - Proper cleanup of resources
 
 func TestInitMetrics(t *testing.T) {
 	// Initialize metrics with HTTP disabled to avoid port conflicts in tests

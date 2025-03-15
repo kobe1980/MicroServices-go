@@ -1,3 +1,5 @@
+// SystemManager command-line application
+// Coordinates workers and manages the distributed task system
 package main
 
 import (

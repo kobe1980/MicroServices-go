@@ -1,3 +1,4 @@
+// Package systemmanager implements the central coordinator for the microservices system
 package systemmanager
 
 import (
@@ -249,7 +250,7 @@ func (sm *SystemManager) KeepAlive() {
 	sm.Metrics.RecordMessageSent("keepalive")
 
 	// Publish keepalive message
-	err := sm.Pub.Publish("worker.getAll", "{}")
+	err := sm.Pub.Publish("worker.getAll", []byte("{}"))
 	if err != nil {
 		logger.Log("SystemManager", sm.ID, 
 			fmt.Sprintf("Error publishing keepalive: %s", err.Error()), logger.ERROR)

@@ -1,3 +1,4 @@
+// Package rabbit provides RabbitMQ client adapters for pub/sub messaging
 package rabbit
 
 import (

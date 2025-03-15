@@ -1,3 +1,4 @@
+// Package metrics provides Prometheus-based metrics collection for monitoring
 package metrics
 
 import (

@@ -1,3 +1,4 @@
+// Package worker implements the base worker functionality for specialized microservices
 package worker
 
 import (
@@ -319,13 +320,14 @@ func (w *Worker) ReceiveError(data []byte) {
 
 // HandleError processes error messages - to be overridden by implementations
 // This method name is aligned with JavaScript convention for error handling
-func (w *Worker) HandleError(data Error) {
+func (w *Worker) HandleError(data Error) error {
 	// Base implementation just logs the error
 	if data.Message != "" {
 		logger.Log("Worker", w.ID, fmt.Sprintf("Received error: %s - %s", data.Error, data.Message), logger.ERROR)
 	} else {
 		logger.Log("Worker", w.ID, fmt.Sprintf("Received error: %s", data.Error), logger.ERROR)
 	}
+	return nil
 }
 
 // ReceiveNextJob handles next job messages
@@ -533,7 +535,7 @@ func (w *Worker) Resend(nextWorkers []string, jobToSend *JobToSend) {
 		w.Metrics.RecordError("job_max_retries_exceeded")
 		
 		// Treat as error using standardized error format
-		return w.HandleError(Error{
+		w.HandleError(Error{
 			Error:   ErrorJobMaxRetriesExceeded,
 			Message: fmt.Sprintf("Job sent %d times, maximum retries exceeded", w.JobRetry),
 			Data:    jobToSend.Job.Data,

@@ -1,3 +1,4 @@
+// Package logger provides structured logging services for the microservices
 package logger
 
 import (

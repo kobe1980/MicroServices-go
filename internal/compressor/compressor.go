@@ -1,3 +1,5 @@
+// Package compressor provides serialization and deserialization services
+// for different data formats including JSON, BSON, and MessagePack
 package compressor
 
 import (

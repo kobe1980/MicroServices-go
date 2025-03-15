@@ -1,3 +1,4 @@
+// Package examples provides worker implementation examples for the microservices framework
 package examples
 
 import (

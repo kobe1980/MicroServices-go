@@ -333,9 +333,21 @@ func (s *Socket) consume(routingKey string, handler DataHandler) {
 	s.mu.Unlock()
 	
 	// Process messages until channel is closed
+	logger.Log("RabbitAdapter", "Socket", 
+		fmt.Sprintf("Starting to consume messages for routing key %s with consumer %s", 
+			routingKey, consumerTag), logger.INFO)
+			
 	for msg := range msgs {
+		logger.Log("RabbitAdapter", "Socket", 
+			fmt.Sprintf("Received message on routing key %s: %d bytes", 
+				routingKey, len(msg.Body)), logger.INFO)
+				
 		if handler != nil {
 			handler(msg.Body)
+		} else {
+			logger.Log("RabbitAdapter", "Socket", 
+				fmt.Sprintf("No handler for message on routing key %s", routingKey), 
+				logger.WARN)
 		}
 	}
 	
@@ -349,10 +361,15 @@ func (s *Socket) Publish(routingKey string, data []byte) error {
 		return fmt.Errorf("socket not connected to any exchange")
 	}
 
+	// Log publishing
+	logger.Log("RabbitAdapter", "Socket", 
+		fmt.Sprintf("Publishing message to exchange %s with routing key %s (size: %d bytes)",
+			s.exchange, routingKey, len(data)), logger.INFO)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	return s.context.channel.PublishWithContext(
+	err := s.context.channel.PublishWithContext(
 		ctx,
 		s.exchange, // exchange
 		routingKey, // routing key
@@ -363,6 +380,18 @@ func (s *Socket) Publish(routingKey string, data []byte) error {
 			Body:        data,
 		},
 	)
+	
+	if err != nil {
+		logger.Log("RabbitAdapter", "Socket", 
+			fmt.Sprintf("Error publishing to %s with routing key %s: %s",
+				s.exchange, routingKey, err.Error()), logger.ERROR)
+	} else {
+		logger.Log("RabbitAdapter", "Socket", 
+			fmt.Sprintf("Successfully published to %s with routing key %s",
+				s.exchange, routingKey), logger.INFO)
+	}
+	
+	return err
 }
 
 // Emit is a higher-level method that serializes and publishes data

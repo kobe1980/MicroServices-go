@@ -117,16 +117,32 @@ func (sm *SystemManager) setupManager() {
 	err = sm.NotificationNewWorker.Connect("notifications", "worker.new.*", func() {
 		if sm.Config.SystemManagerLog {
 			logger.Log("SystemManager", sm.ID, "Connected to notifications, Topic worker.new.*")
+			logger.Log("SystemManager", sm.ID, "Waiting for new worker registrations...")
 		}
 
 		// Handle new worker messages
 		err := sm.NotificationNewWorker.On("data", func(data []byte) {
+			// Log that we received a message
+			logger.Log("SystemManager", sm.ID, 
+				fmt.Sprintf("Received worker.new.* message: %d bytes", len(data)), logger.INFO)
+				
+			// Log raw data for debugging
+			if sm.Config.SystemManagerLog {
+				logger.Log("SystemManager", sm.ID, 
+					fmt.Sprintf("Raw worker registration data: %s", string(data)), logger.INFO)
+			}
+			
 			var workerData worker.WorkerConfig
 			if err := sm.Compressor.Deserialize(data, &workerData); err != nil {
 				logger.Log("SystemManager", sm.ID, 
 					fmt.Sprintf("Error deserializing worker data: %s", err.Error()), logger.ERROR)
 				return
 			}
+
+			// Log deserialized data
+			logger.Log("SystemManager", sm.ID, 
+				fmt.Sprintf("Deserialized worker data: ID=%s, Type=%s", 
+					workerData.ID, workerData.Type), logger.INFO)
 
 			// Process new worker
 			sm.AddWorker(workerData)

@@ -341,6 +341,13 @@ func (sm *SystemManager) AddWorker(workerData worker.WorkerConfig) {
 	sm.WorkersList[workerData.ID] = workerData
 
 	if sm.Config.SystemManagerLog {
+		// Log in the Node.js compatible format
+		jsonData, _ := json.Marshal(workerData)
+		logger.Log("SystemManager", sm.ID, 
+			fmt.Sprintf("New Worker add on the list of worker type %s : %s", 
+				workerData.Type, string(jsonData)))
+		
+		// Also log in the Go format for consistency
 		logger.Log("SystemManager", sm.ID, 
 			fmt.Sprintf("New worker added: %s of type %s", workerData.ID, workerData.Type))
 	}

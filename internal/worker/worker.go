@@ -85,13 +85,24 @@ func NewWorker(workerType string, cfg *config.Config, metricsDisabled bool) (*Wo
 			if cfg.WorkerLog {
 				logger.Log("Worker", w.ID, "Connected to notifications")
 			}
+			
+			// Log worker joining in format compatible with Node.js version
+			logger.Log("Worker", w.ID, fmt.Sprintf("Worker %s of type %s is joining", w.ID, w.Type))
+			
 			// Serialize worker config
-			configBytes, err := w.Compressor.Serialize(w.GetConfig())
+			workerConfig := w.GetConfig()
+			configBytes, err := w.Compressor.Serialize(workerConfig)
 			if err != nil {
 				logger.Log("Worker", w.ID, fmt.Sprintf("Error serializing worker config: %s", err.Error()), logger.ERROR)
 				return
 			}
 
+			// Log serialized data for debugging
+			if cfg.WorkerLog {
+				jsonData, _ := json.Marshal(workerConfig)
+				logger.Log("Worker", w.ID, fmt.Sprintf("Sending registration data: %s", string(jsonData)))
+			}
+			
 			// Publish worker registration
 			err = w.Pub.Publish("worker.new.send", configBytes)
 			if err != nil {

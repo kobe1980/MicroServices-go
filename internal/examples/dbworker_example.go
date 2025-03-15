@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/kobe1980/microservices-go/internal/config"
-	"github.com/kobe1980/microservices-go/internal/logger"
+	"github.com/kobe1980/microservices-go/internal/rabbit"
 	"github.com/kobe1980/microservices-go/internal/worker"
 )
 
@@ -47,7 +47,7 @@ func RunDBWorkerExample() {
 	// Listen for responses from the DBWorker
 	clientWorker.RabbitContext.OnReady(func() {
 		// Set up a subscriber for error responses
-		errorSub, err := clientWorker.RabbitContext.NewSocket(clientWorker.RabbitContext.SocketType("SUB"))
+		errorSub, err := clientWorker.RabbitContext.NewSocket(rabbit.SUB)
 		if err != nil {
 			fmt.Printf("Error creating error socket: %s\n", err)
 			return
@@ -81,7 +81,7 @@ func RunDBWorkerExample() {
 		}
 
 		// Set up a subscriber for DB responses
-		responseSub, err := clientWorker.RabbitContext.NewSocket(clientWorker.RabbitContext.SocketType("SUB"))
+		responseSub, err := clientWorker.RabbitContext.NewSocket(rabbit.SUB)
 		if err != nil {
 			fmt.Printf("Error creating response socket: %s\n", err)
 			return

@@ -88,7 +88,6 @@ func (w *RESTWorker) DoJob(jobData worker.JobData) {
 
 	// Parse the request
 	var request RESTRequest
-	var response RESTResponse
 
 	// Try to deserialize the job data
 	requestData, ok := jobData.Data.(map[string]interface{})

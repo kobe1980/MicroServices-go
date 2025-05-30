@@ -40,6 +40,9 @@ git clone https://github.com/kobe1980/microservices-go.git
 # Change directory
 cd microservices-go
 
+# Install dependencies (Go, Node.js and RabbitMQ)
+./scripts/setup.sh
+
 # Build
 go build -o bin/ ./...
 ```
